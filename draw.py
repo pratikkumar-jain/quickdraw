@@ -1,6 +1,12 @@
 import numpy as np
 import cv2
 from collections import deque
+import pygame
+
+def playSound(filename):
+	pygame.mixer.music.load(filename)
+	pygame.mixer.music.play()
+
 
 lowerBlue = np.array([100, 60, 60])
 upperBlue = np.array([140, 255, 255])
@@ -12,6 +18,8 @@ points = deque(maxlen=512)
 drawboard = np.zeros((471,636,3), dtype=np.uint8)
 
 camera = cv2.VideoCapture(0)
+pygame.init()
+chance = 0
 
 while(camera.isOpened()):
 
@@ -42,10 +50,17 @@ while(camera.isOpened()):
 					continue
 				cv2.line(drawboard, points[i - 1], points[i], (255, 255, 255), 7)
 				cv2.line(image, points[i - 1], points[i], (0, 0, 255), 2)
+			chance = 1
 
 	elif len(contours)==0:
-		points = deque(maxlen=512)
-		drawboard = np.zeros((471,636,3), dtype=np.uint8)
+		if points != []:
+			# pygame.init()
+			if chance == 1:
+				playSound('voices/bucket.wav')
+			chance = 0
+			points = deque(maxlen=512)
+			drawboard = np.zeros((471,636,3), dtype=np.uint8)
+
 
 	cv2.imshow("Paint", drawboard)
 	cv2.imshow("Board", image)
