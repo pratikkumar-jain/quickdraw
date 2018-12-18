@@ -2,8 +2,14 @@ import numpy as np
 import cv2
 from collections import deque
 import pygame
+from keras.models import load_model
 
-def playSound(filename):
+model = load_model('model_quickdraw.h5')
+list_doodle = ['axe', 'bowtie', 'cup', 'diamond', 'envelope', 'fish', 'flower', 'hand', 'lollipop', 'tent']
+
+def playSound(doodle):
+	doodle_class = list_doodle[doodle]
+	filename = 'voices/'+doodle_class+'.wav'
 	pygame.mixer.music.load(filename)
 	pygame.mixer.music.play()
 
@@ -54,16 +60,35 @@ while(camera.isOpened()):
 
 	elif len(contours)==0:
 		if points != []:
+			drawboard_grayScale = cv2.cvtColor(drawboard, cv2.COLOR_BGR2GRAY)
+			draw_blur = cv2.medianBlur(drawboard_grayScale, 15)
+			draw_blur = cv2.GaussianBlur(draw_blur, (5, 5), 0)
+			draw_thresh = cv2.threshold(drawboard_grayScale, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+			contours = cv2.findContours(draw_thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[1]
+			if len(contours) >= 1:
+				contour = max(contours, key=cv2.contourArea)
+				if cv2.contourArea(contour) > 1000:
+					x, y, w, h = cv2.boundingRect(contour)
+					image = drawboard_grayScale[y:y + h, x:x + w]
+					image = cv2.resize(image, (28, 28))
+					image = np.array(image, dtype=np.float32)
+					image = np.reshape(image, (-1, 28, 28, 1))
+					probabilties = model.predict(image)[0]
+					doodle = list(probabilties).index(max(probabilties))
+					# cv2.imshow(image)
+					print(probabilties)
+					print(doodle)
+					playSound(doodle)
 			# pygame.init()
-			if chance == 1:
-				playSound('voices/bucket.wav')
-			chance = 0
+						# if chance == 1:
+						# 	playSound('voices/axe.wav')
+		# chance = 0
 			points = deque(maxlen=512)
 			drawboard = np.zeros((471,636,3), dtype=np.uint8)
 
 
 	cv2.imshow("Paint", drawboard)
-	cv2.imshow("Board", image)
+	# cv2.imshow("Board", image)
 
 	if cv2.waitKey(1) & 0xFF == ord("q"):
 		break
